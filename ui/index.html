@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MC Download Manager</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--panel2:#f1f3f6;--line:#e3e6eb;--text:#16181d;--muted:#667085;
+  --accent:#2f6feb;--accent2:#e8f0ff;--ok:#1f9d55;--warn:#c27c0e;--err:#d1343b;--bar:#e6e9ee;
+  --radius:10px;--shadow:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.08);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0f1115;--panel:#171a21;--panel2:#1d212a;--line:#2a2f3a;--text:#e7e9ee;--muted:#97a0b0;
+  --accent:#5b8ff9;--accent2:#1c2840;--ok:#3fbf74;--warn:#e0a03a;--err:#f06469;--bar:#262b35;--shadow:none;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:12px;padding:12px 20px;max-width:1100px;margin:0 auto;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;white-space:nowrap}
+.logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#2f6feb,#7a5cf5);display:grid;place-items:center;color:#fff;font-size:15px}
+.tabs{display:flex;gap:2px;margin-left:12px}
+.tab{border:0;background:none;padding:7px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
+.tab.on{background:var(--accent2);color:var(--accent);font-weight:600}
+.spacer{flex:1}
+.speed{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+main{max-width:1100px;margin:0 auto;padding:18px 20px 60px}
+.btn{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--panel2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.small{padding:3px 9px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:default}
+.icon-btn{border:0;background:none;width:30px;height:30px;border-radius:7px;cursor:pointer;color:var(--muted);display:inline-grid;place-items:center;font-size:15px}
+.icon-btn:hover{background:var(--panel2);color:var(--text)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.addbox{display:flex;gap:10px;padding:12px;margin-bottom:14px;align-items:flex-start}
+.addbox textarea{flex:1;min-height:38px;height:38px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--panel2)}
+.addbox textarea:focus,input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.vidgroup{display:flex;flex-direction:column;gap:6px}
+.vidgroup input{width:200px;font-size:12.5px;padding:4px 8px}
+.live{color:#fff;background:#e5484d;font-weight:600;font-size:11px;padding:1px 7px;border-radius:99px;letter-spacing:.3px}
+.icon-btn.stop{color:#e5484d}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.filters{display:flex;gap:4px}
+.chip{border:1px solid var(--line);background:var(--panel);padding:4px 11px;border-radius:99px;cursor:pointer;font-size:13px;color:var(--muted)}
+.chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent2)}
+.list{overflow:hidden}
+.row{display:grid;grid-template-columns:34px 1fr auto;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:center}
+.row:first-child{border-top:0}
+.cat{width:34px;height:34px;border-radius:8px;background:var(--panel2);display:grid;place-items:center;font-size:17px}
+.name{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{color:var(--muted);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;font-variant-numeric:tabular-nums;margin-top:2px}
+.meta .err{color:var(--err)}
+.bar{height:5px;background:var(--bar);border-radius:9px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:9px;transition:width .4s}
+.bar.ok>i{background:var(--ok)}.bar.paused>i{background:var(--warn)}.bar.failed>i{background:var(--err)}
+.bar.indet>i{width:30%!important;animation:ind 1.3s infinite ease-in-out}
+@keyframes ind{0%{margin-left:-30%}100%{margin-left:100%}}
+.actions{display:flex;gap:2px}
+.state{font-size:12px;padding:1px 7px;border-radius:99px;background:var(--panel2)}
+.state.completed{color:var(--ok)}.state.failed{color:var(--err)}.state.paused{color:var(--warn)}.state.downloading,.state.probing{color:var(--accent)}
+.log{grid-column:2/4;background:var(--panel2);border-radius:8px;padding:8px 10px;font:12px/1.4 Consolas,ui-monospace,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.empty{padding:50px 20px;text-align:center;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.section{padding:16px}
+.section h3{margin:0 0 12px;font-size:14px}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field label{flex:1}
+.field small,.hint{color:var(--muted);font-size:12px;display:block}
+.field input[type=number]{width:90px}
+.field input[type=text],.field select{width:220px}
+input[type=text],input[type=number],select{border:1px solid var(--line);border-radius:7px;padding:5px 8px;background:var(--panel2)}
+.switch{appearance:none;width:34px;height:20px;border-radius:99px;background:var(--bar);position:relative;cursor:pointer;flex:none;transition:.15s}
+.switch:checked{background:var(--accent)}
+.switch::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch:checked::after{left:16px}
+.pathrow{display:flex;gap:6px;width:100%;margin-top:6px}
+.pathrow input{flex:1;width:auto!important}
+.checks{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.checks label{display:flex;gap:5px;align-items:center;border:1px solid var(--line);padding:3px 9px;border-radius:99px;cursor:pointer;font-size:13px}
+.tool{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-top:1px solid var(--line);align-items:center}
+.tool:first-of-type{border-top:0}
+.ok{color:var(--ok)}.bad{color:var(--err)}
+ol.steps{margin:0;padding-left:20px}ol.steps li{margin:8px 0}
+code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-family:Consolas,ui-monospace,monospace;font-size:12.5px}
+.conn{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 9px}
+.pill.on{border-color:var(--ok);color:var(--ok)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+.toast.show{opacity:.92}
+.hidden{display:none!important}
+@media (max-width:640px){.tabs .tab{padding:6px 8px}.speed{display:none}.row{grid-template-columns:28px 1fr}.actions{grid-column:2}.field input[type=text],.field select{width:150px}}
+</style>
+</head>
+<body>
+<header><div class="top">
+  <div class="brand"><div class="logo">↓</div><span>MC Download Manager</span></div>
+  <nav class="tabs">
+    <button class="tab on" data-view="downloads" data-t="tabDownloads">İndirmeler</button>
+    <button class="tab" data-view="settings" data-t="tabSettings">Ayarlar</button>
+    <button class="tab" data-view="tools" data-t="tabTools">Araçlar</button>
+    <button class="tab" data-view="extension" data-t="tabExtension">Eklenti</button>
+  </nav>
+  <div class="spacer"></div>
+  <div class="speed" id="speed"></div>
+</div></header>
+
+<main>
+<section id="v-downloads">
+  <div class="card addbox">
+    <textarea id="urls" data-tp="addPh" placeholder="Bağlantı yapıştırın (birden fazla için her satıra bir tane)"></textarea>
+    <button class="btn primary" id="addFile" data-t="addFile">İndir</button>
+    <div class="vidgroup"><button class="btn" id="addVideo" data-t="addVideo">Video (yt-dlp)</button>
+      <input type="text" id="section" data-tp="sectionPh" placeholder="Aralık: 1:20:00-1:35:00" title="Opsiyonel — Optional"></div>
+  </div>
+  <div class="toolbar">
+    <div class="filters" id="filters">
+      <button class="chip on" data-f="all" data-t="fAll">Tümü</button>
+      <button class="chip" data-f="active" data-t="fActive">Aktif</button>
+      <button class="chip" data-f="done" data-t="fDone">Tamamlanan</button>
+      <button class="chip" data-f="failed" data-t="fFailed">Hatalı</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn small" data-bulk="pauseAll" data-t="pauseAll">Tümünü duraklat</button>
+    <button class="btn small" data-bulk="resumeAll" data-t="resumeAll">Tümünü sürdür</button>
+    <button class="btn small" data-bulk="clearFinished" data-t="clearFinished">Bitenleri temizle</button>
+    <button class="btn small" id="openDl" data-t="openFolder">Klasörü aç</button>
+  </div>
+  <div class="card list" id="list"></div>
+</section>
+
+<section id="v-settings" class="hidden">
+  <div class="grid">
+    <div class="card section">
+      <h3 data-t="sGeneral">Genel</h3>
+      <div class="field" style="display:block"><label data-t="sDir">İndirme klasörü</label>
+        <div class="pathrow"><input type="text" id="s-downloadDirectory"><button class="btn small" id="browse" data-t="browse">Gözat…</button></div></div>
+      <div class="field"><label><span data-t="sAutostartWin">Windows ile başlat</span><small data-t="sAutostartWinH">Tepside sessizce açılır</small></label><input type="checkbox" class="switch" id="autostart"></div>
+      <div class="field"><label data-t="sOrganize">Kategori alt klasörleri</label><input type="checkbox" class="switch" id="s-organizeByCategory"></div>
+      <div class="field"><label data-t="sAutoQueue">Eklenenleri hemen başlat</label><input type="checkbox" class="switch" id="s-autoStart"></div>
+      <div class="field"><label data-t="sNotify">Bitince bildirim göster</label><input type="checkbox" class="switch" id="s-notifyOnComplete"></div>
+      <div class="field"><label><span data-t="sClip">Panoyu izle</span><small data-t="sClipH">Yakalanan türde bir bağlantı kopyalanınca sorar</small></label><input type="checkbox" class="switch" id="s-watchClipboard"></div>
+    </div>
+    <div class="card section">
+      <h3 data-t="sPerf">Performans</h3>
+      <div class="field"><label><span data-t="sLowPrio">Düşük öncelik modu</span><small data-t="sLowPrioH">CPU ve disk önceliğini düşürür; oyunlarla yarışmaz</small></label><input type="checkbox" class="switch" id="s-lowPriority"></div>
+      <div class="field"><label><span data-t="sLimit">Hız sınırı</span><small data-t="sLimitH">Oyun oynarken ping'i korur. Tepsi menüsünden aç/kapat.</small></label><input type="checkbox" class="switch" id="s-speedLimitOn"></div>
+      <div class="field"><label data-t="sLimitVal">Sınır (KB/s)</label><input type="number" min="0" step="256" id="s-speedLimitKBps"></div>
+      <div class="field"><label><span data-t="sSeg">Dosya başına bağlantı</span><small data-t="sSegH">1–32, varsayılan 8</small></label><input type="number" min="1" max="32" id="s-segmentCount"></div>
+      <div class="field"><label data-t="sConc">Aynı anda indirme</label><input type="number" min="1" max="10" id="s-maxConcurrent"></div>
+      <div class="field"><label><span data-t="sPort">Köprü portu</span><small data-t="sPortH">Eklenti ayarındaki portla aynı olmalı</small></label><input type="number" min="1024" max="65535" id="s-serverPort"></div>
+    </div>
+    <div class="card section">
+      <h3 data-t="sCapture">Yakalanan dosya türleri</h3>
+      <div class="hint" data-t="sCaptureH">Tarayıcı indirmeleri ve pano bağlantıları yalnızca bu türler için yakalanır.</div>
+      <div class="checks" id="groups"></div>
+      <div class="field" style="display:block;margin-top:10px"><label data-t="sCustom">Ek uzantılar (virgülle)</label>
+        <div class="pathrow"><input type="text" id="s-customExtensions" placeholder="torrent, srt"></div></div>
+    </div>
+    <div class="card section">
+      <h3 data-t="sVideo">Video (yt-dlp)</h3>
+      <div class="field"><label data-t="sQuality">Kalite</label><select id="s-videoMaxHeight">
+        <option value="0" data-t="qBest">En iyi</option><option value="2160">2160p</option><option value="1440">1440p</option>
+        <option value="1080">1080p</option><option value="720">720p</option><option value="480">480p</option>
+        <option value="-1" data-t="qM4a">Yalnızca ses (m4a)</option><option value="-2" data-t="qMp3">Yalnızca ses (mp3)</option></select></div>
+      <div class="field"><label data-t="sContainer">Kapsayıcı</label><select id="s-videoContainer">
+        <option value="mp4">MP4</option><option value="mkv">MKV</option><option value="webm">WebM</option><option value="original" data-t="cOrig">Orijinal</option></select></div>
+      <div class="field"><label><span data-t="sFormat">Özel format (-f)</span><small data-t="sFormatH">Doluysa kalite seçimini geçersiz kılar</small></label><input type="text" id="s-videoFormat" placeholder="bv*+ba/b"></div>
+      <div class="field"><label><span data-t="sAutoUpd">yt-dlp'yi otomatik güncelle</span><small data-t="sAutoUpdH">Günde bir kez, arka planda. Sosyal medya siteleri sık değiştiği için önerilir.</small></label><input type="checkbox" class="switch" id="s-autoUpdateYtdlp"></div>
+      <div class="field"><label><span data-t="sClipVid">Kopyalanan video bağlantılarını sor</span><small data-t="sClipVidH">X, Instagram, TikTok, YouTube… gönderi bağlantısı kopyalanınca indirmeyi teklif eder</small></label><input type="checkbox" class="switch" id="s-clipboardVideos"></div>
+      <div class="field"><label><span data-t="sLiveStart">Canlı yayını baştan kaydet</span><small data-t="sLiveStartH">YouTube ve Twitch (deneysel). Kapalıysa indirmeye bastığın andan itibaren kaydeder.</small></label><input type="checkbox" class="switch" id="s-liveFromStart"></div>
+      <div class="field"><label><span data-t="sYtPath">yt-dlp yolu</span><small data-t="sYtPathH">Boş = otomatik</small></label><input type="text" id="s-ytdlpPath"></div>
+    </div>
+  </div>
+</section>
+
+<section id="v-tools" class="hidden">
+  <div class="card section">
+    <h3 data-t="tTitle">Video araçları</h3>
+    <div class="hint" data-t="tHint">Resmî GitHub sürümlerinden indirilir, SHA-256 ile doğrulanır ve %APPDATA% altında tutulur.</div>
+    <div id="toolsList" style="margin-top:8px"></div>
+    <div class="hint" id="toolMsg" style="margin-top:8px"></div>
+  </div>
+</section>
+
+<section id="v-extension" class="hidden">
+  <div class="card section">
+    <h3 data-t="eTitle">Chrome / Edge / Brave eklentisi</h3>
+    <ol class="steps">
+      <li><span data-t="e1">Eklenti klasörünü açın:</span> <button class="btn small" id="openExt" data-t="eOpen">Klasörü aç</button><br><code id="extPath"></code></li>
+      <li><span data-t="e2">Tarayıcıda şu adrese gidin:</span> <code>chrome://extensions</code> <button class="btn small" id="copyExt" data-t="copy">Kopyala</button><br><small class="hint" data-t="e2b">Edge: edge://extensions · Brave: brave://extensions</small></li>
+      <li data-t="e3">Sağ üstten “Geliştirici modu”nu açın.</li>
+      <li data-t="e4">“Paketlenmemiş öğe yükle” deyip 1. adımdaki klasörü seçin.</li>
+    </ol>
+    <div class="conn" id="conn"></div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const TOKEN = location.pathname.split('/')[2] || '';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const EN = {
+  tabDownloads:'Downloads',tabSettings:'Settings',tabTools:'Tools',tabExtension:'Extension',
+  addPh:'Paste links (one per line for several)',addFile:'Download',addVideo:'Video (yt-dlp)',
+  fAll:'All',fActive:'Active',fDone:'Completed',fFailed:'Failed',pauseAll:'Pause all',resumeAll:'Resume all',
+  clearFinished:'Clear finished',openFolder:'Open folder',sGeneral:'General',sDir:'Download folder',browse:'Browse…',
+  sAutostartWin:'Start with Windows',sAutostartWinH:'Starts quietly in the tray',sOrganize:'Category subfolders',
+  sAutoQueue:'Start added downloads immediately',sNotify:'Notify when finished',sClip:'Watch clipboard',
+  sClipH:'Asks when a link of a captured type is copied',sPerf:'Performance',sLowPrio:'Low priority mode',
+  sLowPrioH:'Lowers CPU and disk priority so it never competes with games',sLimit:'Speed limit',
+  sLimitH:'Protects your ping while gaming. Toggle from the tray menu.',sLimitVal:'Limit (KB/s)',
+  sSeg:'Connections per file',sSegH:'1–32, default 8',sConc:'Simultaneous downloads',sPort:'Bridge port',
+  sPortH:'Must match the port in the extension settings',sCapture:'Captured file types',
+  sCaptureH:'Browser downloads and clipboard links are only captured for these types.',sCustom:'Extra extensions (comma separated)',
+  sVideo:'Video (yt-dlp)',sQuality:'Quality',qBest:'Best',qM4a:'Audio only (m4a)',qMp3:'Audio only (mp3)',
+  sContainer:'Container',cOrig:'Original',sFormat:'Custom format (-f)',sFormatH:'Overrides quality when set',
+  sYtPath:'yt-dlp path',sYtPathH:'Empty = automatic',tTitle:'Video tools',
+  tHint:'Downloaded from the official GitHub releases, verified with SHA-256 and kept under %APPDATA%.',
+  eTitle:'Chrome / Edge / Brave extension',e1:'Open the extension folder:',eOpen:'Open folder',
+  e2:'In the browser, go to:',copy:'Copy',e2b:'Edge: edge://extensions · Brave: brave://extensions',
+  e3:'Turn on “Developer mode” (top right).',e4:'Click “Load unpacked” and pick the folder from step 1.',
+  empty:'No downloads yet. Paste a link above or download something in the browser.',
+  st_queued:'Queued',st_probing:'Connecting',st_downloading:'Downloading',st_paused:'Paused',st_completed:'Completed',st_failed:'Error',st_cancelled:'Cancelled',
+  pause:'Pause',resume:'Resume',cancel:'Cancel',open:'Open',reveal:'Show in folder',remove:'Remove from list',del:'Delete file (Recycle Bin)',log:'Log',
+  install:'Install',update:'Update',installed:'Installed',missing:'Not installed',saved:'Saved',copied:'Copied',added:'Added',
+  ytH:'Required for video downloads (YouTube, Twitter/X, Instagram…).',ffH:'Merges separate video/audio streams; needed for 1080p+ and mp3.',
+  denoH:'JavaScript runtime that YouTube now requires.',connected:'connected',notSeen:'not connected yet',
+  dl:'to go',parts:'parts',confirmDel:'Move the file to the Recycle Bin?',
+  sectionPh:'Range: 1:20:00-1:35:00',sLiveStart:'Record live streams from the start',sLiveStartH:'YouTube and Twitch (experimental). When off, recording starts when you press download.',
+  live:'LIVE',stopRec:'Stop recording (keeps the file)',stopping:'Stopping…',badSection:'Invalid range. Example: 1:20:00-1:35:00 or 45:00-inf',range:'Range',sAutoUpd:'Auto-update yt-dlp',sAutoUpdH:'Once a day in the background. Recommended because social sites change often.',sClipVid:'Ask for copied video links',sClipVidH:'Offers to download when an X, Instagram, TikTok, YouTube… post link is copied'
+};
+const TR = {
+  empty:'Henüz indirme yok. Yukarıya bağlantı yapıştırın ya da tarayıcıda bir şey indirin.',
+  st_queued:'Sırada',st_probing:'Bağlanıyor',st_downloading:'İndiriliyor',st_paused:'Duraklatıldı',st_completed:'Tamamlandı',st_failed:'Hata',st_cancelled:'İptal edildi',
+  pause:'Duraklat',resume:'Sürdür',cancel:'İptal',open:'Aç',reveal:'Klasörde göster',remove:'Listeden kaldır',del:'Dosyayı sil (Geri Dönüşüm Kutusu)',log:'Günlük',
+  install:'Kur',update:'Güncelle',installed:'Kurulu',missing:'Kurulu değil',saved:'Kaydedildi',copied:'Kopyalandı',added:'Eklendi',
+  ytH:'Video indirmek için gerekli (YouTube, Twitter/X, Instagram…).',ffH:'Ayrı video/ses akışlarını birleştirir; 1080p+ ve mp3 için gerekli.',
+  denoH:'YouTube\'un artık istediği JavaScript çalışma zamanı.',connected:'bağlı',notSeen:'henüz bağlanmadı',
+  dl:'kaldı',parts:'parça',confirmDel:'Dosya Geri Dönüşüm Kutusu\'na taşınsın mı?',
+  live:'CANLI',stopRec:'Kaydı durdur (dosya kalır)',stopping:'Durduruluyor…',badSection:'Geçersiz aralık. Örnek: 1:20:00-1:35:00 veya 45:00-inf',range:'Aralık'
+};
+let L = 'tr';
+const t = (k) => (L === 'tr' ? (TR[k] ?? EN[k]) : EN[k]) ?? k;
+
+function applyLang() {
+  document.documentElement.lang = L;
+  document.querySelectorAll('[data-t]').forEach((el) => {
+    if (!el.dataset.orig) el.dataset.orig = el.textContent;
+    el.textContent = L === 'tr' ? el.dataset.orig : (EN[el.dataset.t] ?? el.dataset.orig);
+  });
+  document.querySelectorAll('[data-tp]').forEach((el) => {
+    if (!el.dataset.orig) el.dataset.orig = el.placeholder;
+    el.placeholder = L === 'tr' ? el.dataset.orig : (EN[el.dataset.tp] ?? el.dataset.orig);
+  });
+}
+
+async function api(path, body) {
+  const r = await fetch('/api/' + path, {
+    method: body === undefined ? 'GET' : 'POST', cache: 'no-store',
+    headers: { 'X-MCDM-Token': TOKEN, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return r.json();
+}
+
+function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1600); }
+
+const fmtSize = (b) => { if (b == null || b < 0) return '?'; const u = ['B','KB','MB','GB','TB']; let i = 0; let f = b; while (f >= 1024 && i < u.length - 1) { f /= 1024; i++; } return i ? f.toFixed(1) + ' ' + u[i] : b + ' B'; };
+const fmtTime = (s) => { if (!isFinite(s) || s <= 0) return ''; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${m}:${String(x).padStart(2,'0')}`; };
+const CAT = { image:'🖼️', music:'🎵', video:'🎬', apps:'🧩', document:'📄', compressed:'🗜️', other:'📦' };
+
+let state = null, view = 'downloads', filter = 'all', openLog = null, settingsDirty = false;
+
+function render() {
+  if (!state) return;
+  const items = state.items || [];
+  const active = items.filter((i) => i.state === 'downloading' || i.state === 'probing');
+  const sp = active.reduce((a, i) => a + (i.speed || 0), 0);
+  $('speed').textContent = active.length ? (sp > 0 ? `↓ ${fmtSize(sp)}/s · ` : '') + `${active.length} ↓` : '';
+  document.title = active.length ? `(${active.length}) MC Download Manager` : 'MC Download Manager';
+  if (view === 'downloads') renderList(items);
+  if (view === 'tools') renderTools();
+  if (view === 'extension') renderExt();
+  if (view === 'settings' && !settingsDirty) fillSettings();
+}
+
+function renderList(items) {
+  const f = items.filter((i) => filter === 'all' ? true : filter === 'active' ? ['downloading','probing','queued','paused'].includes(i.state) : filter === 'done' ? i.state === 'completed' : ['failed','cancelled'].includes(i.state));
+  if (!f.length) { $('list').innerHTML = `<div class="empty">${esc(t('empty'))}</div>`; return; }
+  $('list').innerHTML = f.map((i) => {
+    const act = i.state === 'downloading' || i.state === 'probing';
+    const pct = i.total > 0 ? Math.min(100, (100 * i.received) / i.total) : 0;
+    const barCls = i.state === 'completed' ? 'ok' : i.state === 'paused' ? 'paused' : i.state === 'failed' ? 'failed' : (act && !(i.total > 0) ? 'indet' : '');
+    const meta = [];
+    meta.push(`<span class="state ${i.state}">${esc(t('st_' + i.state))}</span>`);
+    if (i.live && act) meta.push(`<span class="live">● ${esc(t('live'))}</span>`, `<span>⏺ ${fmtTime(i.elapsed) || '0:00'}</span>`);
+    if (i.section) meta.push(`<span>${esc(t('range'))}: ${esc(i.section)}</span>`);
+    if (i.total > 0) meta.push(`<span>${fmtSize(i.received)} / ${fmtSize(i.total)}${act ? ` · ${pct.toFixed(1)}%` : ''}</span>`);
+    else if (i.received > 0) meta.push(`<span>${fmtSize(i.received)}</span>`);
+    if (act && i.speed > 0) meta.push(`<span>${fmtSize(i.speed)}/s</span>`);
+    if (act && i.speed > 1 && i.total > 0) meta.push(`<span>${fmtTime((i.total - i.received) / i.speed)} ${esc(t('dl'))}</span>`);
+    if (act && i.segments > 1) meta.push(`<span>${i.segments} ${esc(t('parts'))}</span>`);
+    if (i.stage && act) meta.push(`<span>${esc(i.stage)}</span>`);
+    if (i.error) meta.push(`<span class="err" title="${esc(i.error)}">${esc(i.error.slice(0, 160))}</span>`);
+    const b = (a, ic, tip) => `<button class="icon-btn" data-a="${a}" data-id="${i.id}" title="${esc(t(tip))}">${ic}</button>`;
+    let acts = '';
+    if (act && i.live && !i.stopping) acts += `<button class="icon-btn stop" data-a="stop" data-id="${i.id}" title="${esc(t('stopRec'))}">⏹</button>`;
+    if ((act && !i.live) || i.state === 'queued') acts += b('pause', '<b style="font-size:11px;letter-spacing:-1px">❚❚</b>', 'pause');
+    if (['paused','failed','cancelled'].includes(i.state)) acts += b('resume', '▶', 'resume');
+    if (act || i.state === 'queued' || i.state === 'paused') acts += b('cancel', '✕', 'cancel');
+    if (i.state === 'completed' && i.hasFile) acts += b('open', '↗', 'open');
+    acts += b('reveal', '📁', 'reveal');
+    if (i.kind === 'video') acts += b('log', '≡', 'log');
+    if (i.state === 'completed' && i.hasFile) acts += b('delete', '🗑', 'del');
+    if (!act) acts += b('remove', '⌫', 'remove');
+    const log = openLog === i.id ? `<div class="log" id="logbox">${esc(i.log || '…')}</div>` : '';
+    return `<div class="row"><div class="cat">${CAT[i.category] || CAT.other}</div>
+      <div style="min-width:0"><div class="name" title="${esc(i.url)}">${esc(i.name)}</div><div class="meta">${meta.join('')}</div>
+      ${i.state !== 'completed' && i.state !== 'cancelled' ? `<div class="bar ${barCls}"><i style="width:${i.state === 'failed' ? 100 : pct}%"></i></div>` : ''}</div>
+      <div class="actions">${acts}</div>${log}</div>`;
+  }).join('');
+  const lb = $('logbox'); if (lb) lb.scrollTop = lb.scrollHeight;
+}
+
+function renderTools() {
+  const ts = state.tools || {};
+  const rows = [['yt-dlp','ytH'],['ffmpeg','ffH'],['deno','denoH']];
+  $('toolsList').innerHTML = rows.map(([k, h]) => {
+    const v = ts.versions?.[k];
+    const busy = ts.busy === k;
+    return `<div class="tool"><div><b>${k}</b> ${v ? `<span class="ok">✓ ${esc(v)}</span>` : `<span class="bad">${esc(t('missing'))}</span>`}
+      <small class="hint">${esc(t(h))} · ${esc(ts.sizes?.[k] || '')}</small>${ts.paths?.[k] ? `<small class="hint"><code>${esc(ts.paths[k])}</code></small>` : ''}</div>
+      <button class="btn small ${v ? '' : 'primary'}" data-install="${k}" ${ts.busy ? 'disabled' : ''}>${busy ? Math.round((ts.progress || 0) * 100) + '%' : esc(t(v ? 'update' : 'install'))}</button></div>`;
+  }).join('');
+  $('toolMsg').textContent = ts.message || '';
+}
+
+function renderExt() {
+  $('extPath').textContent = state.extensionPath || '';
+  const c = state.connections || {};
+  $('conn').innerHTML = ['chrome','edge','brave'].map((b) => {
+    const on = c[b] && state.now - c[b] < 120000;
+    const v = (state.extVersions || {})[b], stale = v && state.extExpected && v !== state.extExpected;
+    return `<span class="pill ${on && !stale ? 'on' : ''}">${b[0].toUpperCase() + b.slice(1)}: ${esc(t(c[b] ? 'connected' : 'notSeen'))}${v ? ' · v' + esc(v) : ''}${stale ? ' ⚠ ' + esc(L === 'tr' ? 'ESKİ — beklenen v' : 'OUTDATED — expected v') + esc(state.extExpected) + esc(L === 'tr' ? ': klasörü kontrol edip ↻' : ': check folder, then ↻') : ''}</span>`;
+  }).join('');
+}
+
+const SETTING_KEYS = ['liveFromStart','autoUpdateYtdlp','clipboardVideos','downloadDirectory','organizeByCategory','autoStart','notifyOnComplete','watchClipboard','lowPriority','speedLimitOn','speedLimitKBps','segmentCount','maxConcurrent','serverPort','customExtensions','videoMaxHeight','videoContainer','videoFormat','ytdlpPath'];
+function fillSettings() {
+  const s = state.settings;
+  for (const k of SETTING_KEYS) {
+    const el = $('s-' + k); if (!el || el === document.activeElement) continue;
+    if (el.type === 'checkbox') el.checked = !!s[k]; else el.value = s[k] ?? '';
+  }
+  $('autostart').checked = !!state.autostart;
+  $('groups').innerHTML = (state.groups || []).map((g) => `<label title="${esc(g.exts.join(', '))}"><input type="checkbox" data-group="${g.id}" ${s.captureGroupIDs?.includes(g.id) ? 'checked' : ''}> ${CAT[g.id] || ''} ${esc(t('cat_' + g.id) !== 'cat_' + g.id ? t('cat_' + g.id) : g.id)}</label>`).join('');
+}
+Object.assign(EN, { cat_compressed:'Archives', cat_apps:'Apps', cat_video:'Video', cat_music:'Music', cat_document:'Documents', cat_image:'Images' });
+Object.assign(TR, { cat_compressed:'Arşivler', cat_apps:'Uygulamalar', cat_video:'Video', cat_music:'Müzik', cat_document:'Belgeler', cat_image:'Resimler' });
+
+async function saveSetting(k, v) {
+  const r = await api('settings', { [k]: v });
+  if (r.restart && r.url) { setTimeout(() => { location.href = r.url; }, 800); return; }
+  toast(t('saved'));
+  await refresh();
+}
+
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.id === 'autostart') { api('autostart', { on: el.checked }).then(refresh); return; }
+  if (el.dataset.group) {
+    const ids = [...document.querySelectorAll('[data-group]')].filter((x) => x.checked).map((x) => x.dataset.group);
+    saveSetting('captureGroupIDs', ids); return;
+  }
+  if (!el.id?.startsWith('s-')) return;
+  const k = el.id.slice(2);
+  let v = el.type === 'checkbox' ? el.checked : el.value;
+  if (el.type === 'number' || k === 'videoMaxHeight') v = parseInt(v, 10) || 0;
+  settingsDirty = false;
+  saveSetting(k, v);
+});
+document.addEventListener('input', (e) => { if (e.target.id?.startsWith('s-') && e.target.type !== 'checkbox') settingsDirty = true; });
+
+document.addEventListener('click', async (e) => {
+  const tab = e.target.closest('.tab');
+  if (tab) { view = tab.dataset.view; document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === tab));
+    document.querySelectorAll('main>section').forEach((s) => s.classList.toggle('hidden', s.id !== 'v-' + view)); settingsDirty = false; render(); return; }
+  const chip = e.target.closest('.chip');
+  if (chip) { filter = chip.dataset.f; document.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === chip)); render(); return; }
+  const a = e.target.closest('[data-a]');
+  if (a) {
+    const id = a.dataset.id, act = a.dataset.a;
+    if (act === 'log') { openLog = openLog === id ? null : id; refresh(); return; }
+    if (act === 'delete' && !confirm(t('confirmDel'))) return;
+    await api('action', { id, action: act }); refresh(); return;
+  }
+  const bulk = e.target.closest('[data-bulk]');
+  if (bulk) { await api('bulk', { action: bulk.dataset.bulk }); refresh(); return; }
+  const inst = e.target.closest('[data-install]');
+  if (inst) { await api('tools/install', { tool: inst.dataset.install }); refresh(); return; }
+});
+
+async function addURLs(kind) {
+  const v = $('urls').value.trim(); if (!v) return;
+  const section = kind === 'video' ? $('section').value.trim() : '';
+  const r = await api('add', { urls: v, kind, section });
+  if (r.error === 'badSection') { toast(t('badSection')); return; }
+  if (r.added) { $('urls').value = ''; $('section').value = ''; toast(`${t('added')}: ${r.added}`); }
+  refresh();
+}
+$('addFile').onclick = () => addURLs('file');
+$('addVideo').onclick = () => addURLs('video');
+$('urls').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey)) { e.preventDefault(); addURLs('file'); } });
+$('openDl').onclick = () => api('open', { what: 'downloads' });
+$('openExt').onclick = () => api('open', { what: 'extension' });
+$('browse').onclick = async () => { const r = await api('browse', {}); if (r.path) { $('s-downloadDirectory').value = r.path; toast(t('saved')); } refresh(); };
+$('copyExt').onclick = () => { navigator.clipboard?.writeText('chrome://extensions').then(() => toast(t('copied'))); };
+
+let timer = null;
+async function refresh() {
+  try {
+    state = await api('state' + (openLog ? '?log=' + encodeURIComponent(openLog) : ''));
+    if (state.lang && state.lang !== L) { L = state.lang; applyLang(); }
+    render();
+  } catch { $('speed').textContent = '⚠ offline'; }
+  schedule();
+}
+function schedule() {
+  clearTimeout(timer);
+  if (document.hidden) return;                        // no polling while the tab is in the background
+  const busy = state && ((state.items || []).some((i) => ['downloading','probing'].includes(i.state)) || state.tools?.busy);
+  timer = setTimeout(refresh, busy ? 1000 : 4000);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); else clearTimeout(timer); });
+applyLang();
+refresh();
+</script>
+</body>
+</html>
