@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"os/exec"
@@ -52,3 +53,6 @@ func interruptProcess(pid int) bool {
 }
 
 func askYesNo(string, string) bool { return false }
+
+func browserExe(string) string           { return "" }
+func launchBrowser(string, string) error { return errors.New("windows only") }

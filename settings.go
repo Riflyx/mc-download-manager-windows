@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-const appVersion = "1.2.6-win"
+const appVersion = "1.2.8-win"
 const appName = "MC Download Manager"
 
 // Settings is persisted as JSON in %APPDATA%\MC Download Manager\settings.json.

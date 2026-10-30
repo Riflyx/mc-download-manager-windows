@@ -530,3 +530,34 @@ func interruptProcess(pid int) bool {
 }
 
 func askYesNo(title, text string) bool { return msgBox(title, text, mbYesNo|mbIconQ) == idYes }
+
+// browserExe returns the install path of "chrome", "edge" or "brave", or "" when not installed.
+func browserExe(name string) string {
+	rel := map[string]string{
+		"chrome": `Google\Chrome\Application\chrome.exe`,
+		"edge":   `Microsoft\Edge\Application\msedge.exe`,
+		"brave":  `BraveSoftware\Brave-Browser\Application\brave.exe`,
+	}[name]
+	if rel == "" {
+		return ""
+	}
+	for _, env := range []string{"ProgramFiles", "ProgramFiles(x86)", "LocalAppData"} {
+		if base := os.Getenv(env); base != "" {
+			if p := filepath.Join(base, rel); fileExists(p) {
+				return p
+			}
+		}
+	}
+	return ""
+}
+
+// launchBrowser opens url in exe at normal priority (our own below-normal class would otherwise be inherited).
+func launchBrowser(exe, url string) error {
+	cmd := exec.Command(exe, url)
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: normalPriorityClass}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
+}

@@ -15,8 +15,8 @@ Windows için hafif indirme yöneticisi. [mstcvk/mc-download-manager](https://gi
 
 ## Kurulum
 1. [Releases](../../releases) sayfasından `MCDownloadManager.exe` dosyasını indirip çalıştırın (tepside simge çıkar).
-2. Arayüzde **Eklenti** sekmesi → **Klasörü aç**.
-3. Tarayıcıda `chrome://extensions` (Brave: `brave://extensions`, Edge: `edge://extensions`) → **Geliştirici modu** → **Paketlenmemiş öğe yükle** → açılan `extension` klasörünü seçin.
+2. Arayüzde **Eklenti** sekmesine girip kullandığınız tarayıcının düğmesine basın (**Chrome'da kur / Edge'de kur / Brave'de kur**). Klasör yolu panoya kopyalanır ve tarayıcı eklentiler sayfasında açılır.
+3. Açılan sayfada **Geliştirici modu**nu açın → **Paketlenmemiş öğe yükle** → klasör penceresinin adres çubuğuna `Ctrl+V` yapıp Enter'a basın (yol: `%APPDATA%\MC Download Manager\extension`) → **Klasör Seç**.
 4. Video araçları için **Araçlar** sekmesinden yt-dlp ve ffmpeg'i kurun.
 
 > Exe imzasız olduğu için SmartScreen "Yine de çalıştır" uyarısı verebilir.

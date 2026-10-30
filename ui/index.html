@@ -191,11 +191,15 @@ code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-family:Cons
 <section id="v-extension" class="hidden">
   <div class="card section">
     <h3 data-t="eTitle">Chrome / Edge / Brave eklentisi</h3>
+    <div id="installBox" class="hidden">
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="installBtns"></div>
+      <small class="hint" data-t="eInstallHint">Düğmeye basınca klasör yolu panoya kopyalanır ve tarayıcı eklentiler sayfasıyla açılır. Orada: Geliştirici modu → “Paketlenmemiş öğe yükle” → adres çubuğuna Ctrl+V → Enter → Klasör Seç.</small>
+    </div>
     <ol class="steps">
-      <li><span data-t="e1">Eklenti klasörünü açın:</span> <button class="btn small" id="openExt" data-t="eOpen">Klasörü aç</button><br><code id="extPath"></code></li>
+      <li><span data-t="e1">Eklenti klasörünü açın:</span> <button class="btn small" id="openExt" data-t="eOpen">Klasörü aç</button> <button class="btn small" id="copyPath" data-t="eCopyPath">Yolu kopyala</button><br><code id="extPath"></code></li>
       <li><span data-t="e2">Tarayıcıda şu adrese gidin:</span> <code>chrome://extensions</code> <button class="btn small" id="copyExt" data-t="copy">Kopyala</button><br><small class="hint" data-t="e2b">Edge: edge://extensions · Brave: brave://extensions</small></li>
       <li data-t="e3">Sağ üstten “Geliştirici modu”nu açın.</li>
-      <li data-t="e4">“Paketlenmemiş öğe yükle” deyip 1. adımdaki klasörü seçin.</li>
+      <li><span data-t="e4">“Paketlenmemiş öğe yükle” deyip 1. adımdaki klasörü seçin.</span><br><small class="hint" data-t="eHint">Klasör seçme penceresinde bu yolu üstteki adres çubuğuna yapıştırıp Enter'a basın.</small></li>
     </ol>
     <div class="conn" id="conn"></div>
   </div>
@@ -226,7 +230,7 @@ const EN = {
   sContainer:'Container',cOrig:'Original',sFormat:'Custom format (-f)',sFormatH:'Overrides quality when set',
   sYtPath:'yt-dlp path',sYtPathH:'Empty = automatic',tTitle:'Video tools',
   tHint:'Downloaded from the official GitHub releases, verified with SHA-256 and kept under %APPDATA%.',
-  eTitle:'Chrome / Edge / Brave extension',e1:'Open the extension folder:',eOpen:'Open folder',
+  eTitle:'Chrome / Edge / Brave extension',e1:'Open the extension folder:',eOpen:'Open folder',eCopyPath:'Copy path',eInstall_chrome:'Install in Chrome',eInstall_edge:'Install in Edge',eInstall_brave:'Install in Brave',eInstallHint:'The button copies the folder path and opens the browser\'s extensions page. There: Developer mode → “Load unpacked” → Ctrl+V in the address bar → Enter → Select Folder.',eInstallFail:'Could not open the browser.',eHint:'In the folder picker, paste this path into the address bar and press Enter.',
   e2:'In the browser, go to:',copy:'Copy',e2b:'Edge: edge://extensions · Brave: brave://extensions',
   e3:'Turn on “Developer mode” (top right).',e4:'Click “Load unpacked” and pick the folder from step 1.',
   empty:'No downloads yet. Paste a link above or download something in the browser.',
@@ -240,6 +244,7 @@ const EN = {
   live:'LIVE',stopRec:'Stop recording (keeps the file)',stopping:'Stopping…',badSection:'Invalid range. Example: 1:20:00-1:35:00 or 45:00-inf',range:'Range',sAutoUpd:'Auto-update yt-dlp',sAutoUpdH:'Once a day in the background. Recommended because social sites change often.',sClipVid:'Ask for copied video links',sClipVidH:'Offers to download when an X, Instagram, TikTok, YouTube… post link is copied'
 };
 const TR = {
+  eInstall_chrome:'Chrome\'da kur',eInstall_edge:'Edge\'de kur',eInstall_brave:'Brave\'de kur',eInstallFail:'Tarayıcı açılamadı.',
   empty:'Henüz indirme yok. Yukarıya bağlantı yapıştırın ya da tarayıcıda bir şey indirin.',
   st_queued:'Sırada',st_probing:'Bağlanıyor',st_downloading:'İndiriliyor',st_paused:'Duraklatıldı',st_completed:'Tamamlandı',st_failed:'Hata',st_cancelled:'İptal edildi',
   pause:'Duraklat',resume:'Sürdür',cancel:'İptal',open:'Aç',reveal:'Klasörde göster',remove:'Listeden kaldır',del:'Dosyayı sil (Geri Dönüşüm Kutusu)',log:'Günlük',
@@ -347,6 +352,24 @@ function renderTools() {
 
 function renderExt() {
   $('extPath').textContent = state.extensionPath || '';
+  const bs = state.browsers || [];
+  $('installBox').classList.toggle('hidden', !bs.length);
+  const box = $('installBtns');
+  if (box.dataset.k !== bs.join() + L) {
+    box.dataset.k = bs.join() + L;
+    box.innerHTML = '';
+    for (const b of bs) {
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = t('eInstall_' + b);
+      btn.onclick = async () => {
+        try { await navigator.clipboard.writeText(state.extensionPath || ''); } catch {}
+        const r = await api('open', { what: b });
+        toast(r && r.ok === false ? t('eInstallFail') : t('copied'));
+      };
+      box.appendChild(btn);
+    }
+  }
   const c = state.connections || {};
   $('conn').innerHTML = ['chrome','edge','brave'].map((b) => {
     const on = c[b] && state.now - c[b] < 120000;
@@ -424,6 +447,7 @@ $('urls').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlK
 $('openDl').onclick = () => api('open', { what: 'downloads' });
 $('openExt').onclick = () => api('open', { what: 'extension' });
 $('browse').onclick = async () => { const r = await api('browse', {}); if (r.path) { $('s-downloadDirectory').value = r.path; toast(t('saved')); } refresh(); };
+$('copyPath').onclick = () => { navigator.clipboard?.writeText(state.extensionPath || '').then(() => toast(t('copied'))); };
 $('copyExt').onclick = () => { navigator.clipboard?.writeText('chrome://extensions').then(() => toast(t('copied'))); };
 
 let timer = null;

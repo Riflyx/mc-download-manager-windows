@@ -339,7 +339,7 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 			"ok": true, "version": appVersion, "items": views, "settings": st, "groups": groups,
 			"server": map[string]any{"status": srvStatus, "running": running}, "connections": conns, "extVersions": vers, "extExpected": expectedExtVersion(),
 			"now": time.Now().UnixMilli(), "lang": lang, "autostart": autostartEnabled(),
-			"extensionPath": extensionDir(), "tools": tools.Status(st.YtdlpPath),
+			"extensionPath": extensionDir(), "browsers": installedBrowsers(), "tools": tools.Status(st.YtdlpPath),
 		})
 	case "/api/add":
 		var b struct{ URLs, Kind, Section string }
@@ -421,6 +421,13 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 			shellOpen(d)
 		case "extension":
 			shellOpen(ensureExtensionFiles())
+		case "chrome", "edge", "brave": // browser's extensions page; the UI has already copied the folder path to the clipboard
+			ensureExtensionFiles()
+			exe := browserExe(b.What)
+			if exe == "" || launchBrowser(exe, b.What+"://extensions") != nil {
+				writeJSON(w, 200, map[string]any{"ok": false})
+				return
+			}
 		}
 		writeJSON(w, 200, map[string]any{"ok": true})
 	case "/api/autostart":
@@ -431,4 +438,14 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSON(w, 404, map[string]any{"ok": false, "error": "not found"})
 	}
+}
+
+func installedBrowsers() []string {
+	var out []string
+	for _, b := range []string{"chrome", "edge", "brave"} {
+		if browserExe(b) != "" {
+			out = append(out, b)
+		}
+	}
+	return out
 }
