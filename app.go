@@ -51,6 +51,7 @@ func main() {
 	appStore = NewStore(appSettings)
 	appServer = NewServer(appStore, appSettings)
 	scheduleYtdlpAutoUpdate()
+	scheduleUpdateCheck()
 	serverErr := appServer.Start()
 	ensureExtensionFiles()
 
@@ -71,7 +72,7 @@ func openUI() { shellOpen(appServer.UIURL()) }
 
 // applyRuntimeSettings pushes settings that act on the running process.
 func applyRuntimeSettings(s Settings) {
-	limiter.SetRate(s.SpeedLimitBytes())
+	applyRate(s)
 	setLowPriority(s.LowPriority)
 }
 

@@ -56,6 +56,7 @@ var strs = map[string][2]string{ // key -> {en, tr}
 	"errNetwork":      {"Could not reach the site (connection problem, VPN/DNS or the site is down).", "Siteye ulaşılamadı (bağlantı sorunu, VPN/DNS ya da site çökmüş olabilir)."},
 	"errOutdated":     {"The site changed; update yt-dlp in Tools and retry.", "Site değişmiş; Araçlar'dan yt-dlp'yi güncelleyip tekrar deneyin."},
 	"clipVideo":       {"A video link was copied:\n\n%s\n\nDownload it with yt-dlp?", "Bir video bağlantısı kopyalandı:\n\n%s\n\nyt-dlp ile indirilsin mi?"},
+	"updateAvail":     {"A new version (%s) is available — click to open the download page.", "Yeni sürüm (%s) var — indirme sayfası için tıklayın."},
 	"alreadyRunning":  {"MC Download Manager is already running.", "MC Download Manager zaten çalışıyor."},
 	"portBusy":        {"Port %d is in use. Change it in Settings.", "%d portu kullanımda. Ayarlar'dan değiştirin."},
 }

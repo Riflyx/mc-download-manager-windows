@@ -146,6 +146,7 @@ type SegConfig struct {
 	OnFinish     func(error)
 	IdleTimeout  time.Duration
 	MaxAttempts  int
+	Auto         bool // SegmentCount is a ceiling; the number of live connections is tuned while downloading
 }
 
 type SegmentedDownloader struct {
@@ -160,6 +161,8 @@ type SegmentedDownloader struct {
 	singleRecv atomic.Int64
 	file       *os.File
 	finishOnce sync.Once
+	conns      atomic.Int32 // live connections / current target (for the detail view)
+	target     atomic.Int32
 }
 
 func NewSegmentedDownloader(cfg SegConfig) *SegmentedDownloader {
@@ -252,12 +255,16 @@ func (d *SegmentedDownloader) run() {
 	}
 	count := 1
 	if probe.Ranges {
-		count = int(probe.Total / d.cfg.MinSegment)
-		if count > d.cfg.SegmentCount {
-			count = d.cfg.SegmentCount
-		}
-		if count < 1 {
-			count = 1
+		if d.cfg.Auto {
+			count = autoSegmentCount(probe.Total, d.cfg.SegmentCount)
+		} else {
+			count = int(probe.Total / d.cfg.MinSegment)
+			if count > d.cfg.SegmentCount {
+				count = d.cfg.SegmentCount
+			}
+			if count < 1 {
+				count = 1
+			}
 		}
 	}
 	if probe.Ranges && count > 1 {
@@ -273,6 +280,30 @@ func (d *SegmentedDownloader) run() {
 		d.runSingle()
 	}
 }
+
+// autoSegmentCount cuts a file into many small chunks (a work queue) so the number of live connections can change
+// freely while downloading; tiny files use one stream because extra requests would cost more than they save.
+func autoSegmentCount(total int64, maxConns int) int {
+	const mib = 1 << 20
+	if total < 2*mib {
+		return 1
+	}
+	chunk := min(max(total/int64(maxConns*4), mib), 32*mib)
+	return int(min(max((total+chunk-1)/chunk, 2), 128))
+}
+
+func (d *SegmentedDownloader) receivedTotal() int64 {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	var n int64
+	for _, s := range d.segments {
+		n += s.Received
+	}
+	return n
+}
+
+// Conns returns the live connection count and the current target.
+func (d *SegmentedDownloader) Conns() (int, int) { return int(d.conns.Load()), int(d.target.Load()) }
 
 func makeSegments(total int64, count int) []Segment {
 	size := total / int64(count)
@@ -418,6 +449,20 @@ func (d *SegmentedDownloader) runMulti() {
 	defer segCancel()
 	results := make(chan segResult, d.cfg.SegmentCount+1)
 	limit := d.cfg.SegmentCount
+	ceil := d.cfg.SegmentCount // auto mode: never above what the server tolerated
+	var tick <-chan time.Time
+	var lastRecv, base int64
+	var lastT, holdUntil time.Time
+	var dir int
+	if d.cfg.Auto {
+		limit = min(2, ceil)
+		if len(d.cfg.ResumeSegs) > 0 {
+			limit = min(4, ceil)
+		}
+		tk := time.NewTicker(2 * time.Second)
+		defer tk.Stop()
+		tick, lastRecv, lastT = tk.C, d.receivedTotal(), time.Now()
+	}
 	active := 0
 	retries := map[int]int{}
 	var throttledUntil time.Time
@@ -433,6 +478,8 @@ func (d *SegmentedDownloader) runMulti() {
 				go func(i int) { results <- d.downloadSegment(segCtx, i) }(i)
 			}
 		}
+		d.conns.Store(int32(active))
+		d.target.Store(int32(limit))
 		if active == 0 && len(pending) == 0 {
 			if d.allDone() {
 				d.finish(nil)
@@ -457,6 +504,22 @@ func (d *SegmentedDownloader) runMulti() {
 			return
 		case <-wakeC:
 			continue
+		case now := <-tick:
+			// Hill climbing: add a connection while the aggregate speed keeps rising by >6%, step back and hold
+			// when it does not. A per-connection-throttled server climbs to the ceiling; a fast one stays at 2-3.
+			recv := d.receivedTotal()
+			sp := float64(recv-lastRecv) / now.Sub(lastT).Seconds()
+			lastRecv, lastT = recv, now
+			if now.Before(holdUntil) || len(pending) == 0 || active < limit {
+				continue
+			}
+			if dir > 0 && sp <= float64(base)*1.06 {
+				limit, dir, holdUntil = max(1, limit-1), 0, now.Add(15*time.Second)
+			} else if limit < ceil {
+				limit, dir, base = limit+1, 1, int64(sp)
+			} else {
+				dir = 0
+			}
 		case r := <-results:
 			if wake != nil {
 				wake.Stop()

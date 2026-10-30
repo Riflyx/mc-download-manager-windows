@@ -63,6 +63,9 @@ main{max-width:1100px;margin:0 auto;padding:18px 20px 60px}
 .actions{display:flex;gap:2px}
 .state{font-size:12px;padding:1px 7px;border-radius:99px;background:var(--panel2)}
 .state.completed{color:var(--ok)}.state.failed{color:var(--err)}.state.paused{color:var(--warn)}.state.downloading,.state.probing{color:var(--accent)}
+.segbar{display:flex;gap:1px;height:12px;margin-top:4px}.segbar i{flex:1;background:var(--accent);border-radius:2px}
+.detail{grid-column:2/4}.search{border:1px solid var(--line);border-radius:99px;padding:5px 12px;background:var(--panel);min-width:150px}
+.updbox{display:flex;gap:10px;align-items:center;padding:10px 14px;margin-bottom:10px;border-color:var(--accent)}
 .log{grid-column:2/4;background:var(--panel2);border-radius:8px;padding:8px 10px;font:12px/1.4 Consolas,ui-monospace,monospace;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all}
 .empty{padding:50px 20px;text-align:center;color:var(--muted)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
@@ -118,6 +121,7 @@ code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-family:Cons
     <div class="vidgroup"><button class="btn" id="addVideo" data-t="addVideo">Video (yt-dlp)</button>
       <input type="text" id="section" data-tp="sectionPh" placeholder="Aralık: 1:20:00-1:35:00" title="Opsiyonel — Optional"></div>
   </div>
+  <div id="upd" class="hidden"><div class="card updbox"><span id="updText"></span><a class="btn small primary" id="updLink" target="_blank" rel="noopener" data-t="updGet">İndir</a></div></div>
   <div class="toolbar">
     <div class="filters" id="filters">
       <button class="chip on" data-f="all" data-t="fAll">Tümü</button>
@@ -125,12 +129,15 @@ code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-family:Cons
       <button class="chip" data-f="done" data-t="fDone">Tamamlanan</button>
       <button class="chip" data-f="failed" data-t="fFailed">Hatalı</button>
     </div>
+    <input type="search" class="search" id="q" data-tp="searchPh" placeholder="Ara…">
+    <select id="catf"><option value="all" data-t="catAll">Tüm türler</option><option value="image" data-t="cat_image">Resimler</option><option value="music" data-t="cat_music">Müzik</option><option value="video" data-t="cat_video">Video</option><option value="apps" data-t="cat_apps">Uygulamalar</option><option value="document" data-t="cat_document">Belgeler</option><option value="compressed" data-t="cat_compressed">Arşivler</option><option value="other" data-t="cat_other">Diğer</option></select>
     <div class="spacer"></div>
     <button class="btn small" data-bulk="pauseAll" data-t="pauseAll">Tümünü duraklat</button>
     <button class="btn small" data-bulk="resumeAll" data-t="resumeAll">Tümünü sürdür</button>
     <button class="btn small" data-bulk="clearFinished" data-t="clearFinished">Bitenleri temizle</button>
     <button class="btn small" id="openDl" data-t="openFolder">Klasörü aç</button>
   </div>
+  <div class="hint" id="netline" style="margin:-4px 2px 8px"></div>
   <div class="card list" id="list"></div>
 </section>
 
@@ -151,6 +158,9 @@ code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-family:Cons
       <div class="field"><label><span data-t="sLowPrio">Düşük öncelik modu</span><small data-t="sLowPrioH">CPU ve disk önceliğini düşürür; oyunlarla yarışmaz</small></label><input type="checkbox" class="switch" id="s-lowPriority"></div>
       <div class="field"><label><span data-t="sLimit">Hız sınırı</span><small data-t="sLimitH">Oyun oynarken ping'i korur. Tepsi menüsünden aç/kapat.</small></label><input type="checkbox" class="switch" id="s-speedLimitOn"></div>
       <div class="field"><label data-t="sLimitVal">Sınır (KB/s)</label><input type="number" min="0" step="256" id="s-speedLimitKBps"></div>
+      <div class="field"><label><span data-t="sAutoConn">Bağlantı sayısını otomatik ayarla</span><small data-t="sAutoConnH">Dosya boyutuna ve ölçülen hıza göre 2–16 arası kendisi seçer. Kapalıysa aşağıdaki sayı sabit kullanılır.</small></label><input type="checkbox" class="switch" id="s-autoConnections"></div>
+      <div class="field"><label><span data-t="sGame">Oyun dostu mod</span><small data-t="sGameH">Ping yükselirse ya da tam ekran uygulama açıksa hızı kendiliğinden kısar. İndirme sırasında saniyede bir 1.1.1.1'e küçük bir bağlantı denemesi yapar.</small></label><input type="checkbox" class="switch" id="s-gameFriendly"></div>
+      <div class="field"><label><span data-t="sUpdChk">Güncelleme denetimi</span><small data-t="sUpdChkH">Günde iki kez GitHub'da yeni sürüm olup olmadığına bakar.</small></label><input type="checkbox" class="switch" id="s-checkUpdates"></div>
       <div class="field"><label><span data-t="sSeg">Dosya başına bağlantı</span><small data-t="sSegH">1–32, varsayılan 8</small></label><input type="number" min="1" max="32" id="s-segmentCount"></div>
       <div class="field"><label data-t="sConc">Aynı anda indirme</label><input type="number" min="1" max="10" id="s-maxConcurrent"></div>
       <div class="field"><label><span data-t="sPort">Köprü portu</span><small data-t="sPortH">Eklenti ayarındaki portla aynı olmalı</small></label><input type="number" min="1024" max="65535" id="s-serverPort"></div>
@@ -284,7 +294,7 @@ const fmtSize = (b) => { if (b == null || b < 0) return '?'; const u = ['B','KB'
 const fmtTime = (s) => { if (!isFinite(s) || s <= 0) return ''; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${m}:${String(x).padStart(2,'0')}`; };
 const CAT = { image:'🖼️', music:'🎵', video:'🎬', apps:'🧩', document:'📄', compressed:'🗜️', other:'📦' };
 
-let state = null, view = 'downloads', filter = 'all', openLog = null, settingsDirty = false;
+let state = null, view = 'downloads', filter = 'all', openLog = null, openDetail = null, detail = null, q = '', catFilter = 'all', settingsDirty = false;
 
 function render() {
   if (!state) return;
@@ -293,6 +303,11 @@ function render() {
   const sp = active.reduce((a, i) => a + (i.speed || 0), 0);
   $('speed').textContent = active.length ? (sp > 0 ? `↓ ${fmtSize(sp)}/s · ` : '') + `${active.length} ↓` : '';
   document.title = active.length ? `(${active.length}) MC Download Manager` : 'MC Download Manager';
+  const n = state.net;
+  $('netline').textContent = state.settings?.gameFriendly && n && n.active && n.base > 0
+    ? `${t('netGuard')}: ${t('latency')} ${Math.round(n.rtt)} ms (${t('baseLat')} ${Math.round(n.base)}) · ${n.rateKBps ? t('capped') + ' ' + fmtSize(n.rateKBps * 1024) + '/s' : t('noCap')}${n.game ? ' · 🎮 ' + t('gameOn') : ''}` : '';
+  $('upd').classList.toggle('hidden', !state.update);
+  if (state.update) { $('updText').textContent = `${t('updNew')} v${state.update.version}`; $('updLink').href = state.update.url; }
   if (view === 'downloads') renderList(items);
   if (view === 'tools') renderTools();
   if (view === 'extension') renderExt();
@@ -300,7 +315,7 @@ function render() {
 }
 
 function renderList(items) {
-  const f = items.filter((i) => filter === 'all' ? true : filter === 'active' ? ['downloading','probing','queued','paused'].includes(i.state) : filter === 'done' ? i.state === 'completed' : ['failed','cancelled'].includes(i.state));
+  const f = items.filter((i) => (catFilter === 'all' || i.category === catFilter) && (!q || (i.name + ' ' + i.url).toLowerCase().includes(q))).filter((i) => filter === 'all' ? true : filter === 'active' ? ['downloading','probing','queued','paused'].includes(i.state) : filter === 'done' ? i.state === 'completed' : ['failed','cancelled'].includes(i.state));
   if (!f.length) { $('list').innerHTML = `<div class="empty">${esc(t('empty'))}</div>`; return; }
   $('list').innerHTML = f.map((i) => {
     const act = i.state === 'downloading' || i.state === 'probing';
@@ -315,6 +330,7 @@ function renderList(items) {
     if (act && i.speed > 0) meta.push(`<span>${fmtSize(i.speed)}/s</span>`);
     if (act && i.speed > 1 && i.total > 0) meta.push(`<span>${fmtTime((i.total - i.received) / i.speed)} ${esc(t('dl'))}</span>`);
     if (act && i.segments > 1) meta.push(`<span>${i.segments} ${esc(t('parts'))}</span>`);
+    if (act && i.conns > 0) meta.push(`<span>${i.conns} ${esc(t('conn'))}</span>`);
     if (i.stage && act) meta.push(`<span>${esc(i.stage)}</span>`);
     if (i.error) meta.push(`<span class="err" title="${esc(i.error)}">${esc(i.error.slice(0, 160))}</span>`);
     const b = (a, ic, tip) => `<button class="icon-btn" data-a="${a}" data-id="${i.id}" title="${esc(t(tip))}">${ic}</button>`;
@@ -326,13 +342,15 @@ function renderList(items) {
     if (i.state === 'completed' && i.hasFile) acts += b('open', '↗', 'open');
     acts += b('reveal', '📁', 'reveal');
     if (i.kind === 'video') acts += b('log', '≡', 'log');
+    else if (i.segments > 1 || act) acts += b('detail', 'ⓘ', 'detail');
     if (i.state === 'completed' && i.hasFile) acts += b('delete', '🗑', 'del');
     if (!act) acts += b('remove', '⌫', 'remove');
+    const det = openDetail === i.id && detail && detail.segs ? `<div class="detail"><div class="segbar">${detail.segs.map((p) => `<i style="opacity:${(0.12 + 0.88 * p).toFixed(2)}"></i>`).join('')}</div><div class="meta"><span>${esc(t('conn'))}: ${detail.conns}/${detail.limit}${detail.auto ? ' (' + esc(t('auto')) + ')' : ''}</span><span>${detail.segs.length} ${esc(t('parts'))}</span></div></div>` : '';
     const log = openLog === i.id ? `<div class="log" id="logbox">${esc(i.log || '…')}</div>` : '';
     return `<div class="row"><div class="cat">${CAT[i.category] || CAT.other}</div>
       <div style="min-width:0"><div class="name" title="${esc(i.url)}">${esc(i.name)}</div><div class="meta">${meta.join('')}</div>
       ${i.state !== 'completed' && i.state !== 'cancelled' ? `<div class="bar ${barCls}"><i style="width:${i.state === 'failed' ? 100 : pct}%"></i></div>` : ''}</div>
-      <div class="actions">${acts}</div>${log}</div>`;
+      <div class="actions">${acts}</div>${det}${log}</div>`;
   }).join('');
   const lb = $('logbox'); if (lb) lb.scrollTop = lb.scrollHeight;
 }
@@ -378,7 +396,7 @@ function renderExt() {
   }).join('');
 }
 
-const SETTING_KEYS = ['liveFromStart','autoUpdateYtdlp','clipboardVideos','downloadDirectory','organizeByCategory','autoStart','notifyOnComplete','watchClipboard','lowPriority','speedLimitOn','speedLimitKBps','segmentCount','maxConcurrent','serverPort','customExtensions','videoMaxHeight','videoContainer','videoFormat','ytdlpPath'];
+const SETTING_KEYS = ['autoConnections','gameFriendly','checkUpdates','liveFromStart','autoUpdateYtdlp','clipboardVideos','downloadDirectory','organizeByCategory','autoStart','notifyOnComplete','watchClipboard','lowPriority','speedLimitOn','speedLimitKBps','segmentCount','maxConcurrent','serverPort','customExtensions','videoMaxHeight','videoContainer','videoFormat','ytdlpPath'];
 function fillSettings() {
   const s = state.settings;
   for (const k of SETTING_KEYS) {
@@ -388,8 +406,15 @@ function fillSettings() {
   $('autostart').checked = !!state.autostart;
   $('groups').innerHTML = (state.groups || []).map((g) => `<label title="${esc(g.exts.join(', '))}"><input type="checkbox" data-group="${g.id}" ${s.captureGroupIDs?.includes(g.id) ? 'checked' : ''}> ${CAT[g.id] || ''} ${esc(t('cat_' + g.id) !== 'cat_' + g.id ? t('cat_' + g.id) : g.id)}</label>`).join('');
 }
-Object.assign(EN, { cat_compressed:'Archives', cat_apps:'Apps', cat_video:'Video', cat_music:'Music', cat_document:'Documents', cat_image:'Images' });
-Object.assign(TR, { cat_compressed:'Arşivler', cat_apps:'Uygulamalar', cat_video:'Video', cat_music:'Müzik', cat_document:'Belgeler', cat_image:'Resimler' });
+Object.assign(EN, { catAll:'All types', cat_other:'Other', searchPh:'Search…', updNew:'New version available:', updGet:'Download', detail:'Details', conn:'connections', auto:'auto',
+  netGuard:'Network guard', latency:'latency', baseLat:'idle', capped:'limited to', noCap:'no limit', gameOn:'fullscreen app detected',
+  sAutoConn:'Tune connections automatically', sAutoConnH:'Picks 2–16 from file size and measured speed. When off, the number below is used.',
+  sGame:'Game-friendly mode', sGameH:'Slows downloads when ping rises or a fullscreen app runs. While downloading it opens a tiny connection to 1.1.1.1 every second.',
+  sUpdChk:'Check for updates', sUpdChkH:'Looks for a new release on GitHub twice a day.',
+  cat_compressed:'Archives', cat_apps:'Apps', cat_video:'Video', cat_music:'Music', cat_document:'Documents', cat_image:'Images' });
+Object.assign(TR, { catAll:'Tüm türler', cat_other:'Diğer', searchPh:'Ara…', updNew:'Yeni sürüm var:', updGet:'İndir', detail:'Ayrıntılar', conn:'bağlantı', auto:'otomatik',
+  netGuard:'Ağ koruması', latency:'gecikme', baseLat:'boşta', capped:'sınır', noCap:'sınır yok', gameOn:'tam ekran uygulama algılandı',
+  cat_compressed:'Arşivler', cat_apps:'Uygulamalar', cat_video:'Video', cat_music:'Müzik', cat_document:'Belgeler', cat_image:'Resimler' });
 
 async function saveSetting(k, v) {
   const r = await api('settings', { [k]: v });
@@ -424,6 +449,7 @@ document.addEventListener('click', async (e) => {
   if (a) {
     const id = a.dataset.id, act = a.dataset.a;
     if (act === 'log') { openLog = openLog === id ? null : id; refresh(); return; }
+    if (act === 'detail') { openDetail = openDetail === id ? null : id; detail = null; refresh(); return; }
     if (act === 'delete' && !confirm(t('confirmDel'))) return;
     await api('action', { id, action: act }); refresh(); return;
   }
@@ -441,6 +467,8 @@ async function addURLs(kind) {
   if (r.added) { $('urls').value = ''; $('section').value = ''; toast(`${t('added')}: ${r.added}`); }
   refresh();
 }
+$('q').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); render(); });
+$('catf').onchange = (e) => { catFilter = e.target.value; render(); };
 $('addFile').onclick = () => addURLs('file');
 $('addVideo').onclick = () => addURLs('video');
 $('urls').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || !e.shiftKey)) { e.preventDefault(); addURLs('file'); } });
@@ -454,6 +482,7 @@ let timer = null;
 async function refresh() {
   try {
     state = await api('state' + (openLog ? '?log=' + encodeURIComponent(openLog) : ''));
+    if (openDetail) detail = await api('detail?id=' + encodeURIComponent(openDetail));
     if (state.lang && state.lang !== L) { L = state.lang; applyLang(); }
     render();
   } catch { $('speed').textContent = '⚠ offline'; }

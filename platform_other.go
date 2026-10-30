@@ -56,3 +56,5 @@ func askYesNo(string, string) bool { return false }
 
 func browserExe(string) string           { return "" }
 func launchBrowser(string, string) error { return errors.New("windows only") }
+
+func isFullscreenApp() bool { return false }

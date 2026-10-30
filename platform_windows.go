@@ -53,6 +53,7 @@ var (
 
 	pShellNotifyIconW      = shell32.NewProc("Shell_NotifyIconW")
 	pShellExecuteW         = shell32.NewProc("ShellExecuteW")
+	pSHQueryUserNotifState = shell32.NewProc("SHQueryUserNotificationState")
 	pSHFileOperationW      = shell32.NewProc("SHFileOperationW")
 	pSHBrowseForFolderW    = shell32.NewProc("SHBrowseForFolderW")
 	pSHGetPathFromIDListW  = shell32.NewProc("SHGetPathFromIDListW")
@@ -560,4 +561,14 @@ func launchBrowser(exe, url string) error {
 	}
 	go func() { _ = cmd.Wait() }()
 	return nil
+}
+
+// isFullscreenApp reports whether a fullscreen app (game, presentation) owns the screen: the shell's
+// QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN and QUNS_PRESENTATION_MODE states.
+func isFullscreenApp() bool {
+	var state uint32
+	if r, _, _ := pSHQueryUserNotifState.Call(uintptr(unsafe.Pointer(&state))); r != 0 {
+		return false
+	}
+	return state == 2 || state == 3 || state == 4
 }

@@ -389,6 +389,9 @@ func (s *Store) startFileLocked(it *DownloadItem) {
 	id := it.ID
 	var dl *SegmentedDownloader
 	cfg := SegConfig{URL: u, Headers: it.Headers, PartPath: it.partPath(), SegmentCount: segCount}
+	if it.RequestedSegments <= 0 && s.settings.Get().AutoConnections {
+		cfg.Auto, cfg.SegmentCount = true, 16
+	}
 	if resumable {
 		cfg.ResumeSegs = append([]Segment(nil), it.Segments...)
 		cfg.ResumeTotal = it.TotalBytes
@@ -968,6 +971,7 @@ func (s *Store) tickLoop() {
 		if active == 0 {
 			s.tickerOn = false
 			s.mu.Unlock()
+			guard.Idle()
 			s.save()
 			s.activityChanged()
 			return
@@ -1019,6 +1023,15 @@ func (s *Store) tickLocked() int {
 		}
 	}
 	s.tickCount++
+	if len(activeIDs) > 0 && s.tickCount%2 == 0 {
+		var agg float64
+		for _, it := range s.items {
+			if activeIDs[it.ID] && it.Kind != "video" {
+				agg += it.Speed
+			}
+		}
+		go guard.Tick(agg)
+	}
 	if len(activeIDs) > 0 && s.tickCount%10 == 0 {
 		go s.save() // segment table to disk every 5 s for crash-safe resume
 	}
@@ -1135,6 +1148,7 @@ type ItemView struct {
 	Stopping  bool    `json:"stopping,omitempty"`
 	Section   string  `json:"section,omitempty"`
 	Elapsed   int64   `json:"elapsed,omitempty"` // seconds recorded so far (live)
+	Conns     int     `json:"conns,omitempty"`   // live connections (file downloads)
 }
 
 func (s *Store) Views(limit int, withLog bool) []ItemView {
@@ -1150,6 +1164,9 @@ func (s *Store) Views(limit int, withLog bool) []ItemView {
 			Speed: it.Speed, Total: it.TotalBytes, Received: it.ReceivedBytes, Stage: it.Stage, Error: it.ErrorMessage,
 			Category: categoryOf(it.FileName, it.Kind), Segments: len(it.Segments), Created: it.CreatedAt.UnixMilli(),
 			HasFile: it.FinalPath != "", Live: it.Live, Stopping: it.Stopping, Section: it.Section,
+		}
+		if dl := s.downloaders[it.ID]; dl != nil && isActiveState(it.State) {
+			v.Conns, _ = dl.Conns()
 		}
 		if it.Live && isActiveState(it.State) && !it.Started.IsZero() {
 			v.Elapsed = int64(time.Since(it.Started).Seconds())
@@ -1299,4 +1316,30 @@ func applyMarkOfTheWeb(p, src, referer string) {
 		body += "HostUrl=" + src + "\r\n"
 	}
 	_ = os.WriteFile(p+":Zone.Identifier", []byte(body), 0o644)
+}
+
+// DetailView feeds the per-download detail panel: segment progress and connection counts.
+type DetailView struct {
+	Segs  []float64 `json:"segs"` // 0..1 per segment, in file order
+	Conns int       `json:"conns"`
+	Limit int       `json:"limit"`
+	Auto  bool      `json:"auto"`
+}
+
+func (s *Store) Detail(id string) DetailView {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var v DetailView
+	it := s.get(id)
+	if it == nil {
+		return v
+	}
+	for _, sg := range it.Segments {
+		v.Segs = append(v.Segs, float64(min(sg.Received, sg.Length()))/float64(max(sg.Length(), 1)))
+	}
+	if dl := s.downloaders[id]; dl != nil {
+		v.Conns, v.Limit = dl.Conns()
+		v.Auto = dl.cfg.Auto
+	}
+	return v
 }

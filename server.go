@@ -339,8 +339,10 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 			"ok": true, "version": appVersion, "items": views, "settings": st, "groups": groups,
 			"server": map[string]any{"status": srvStatus, "running": running}, "connections": conns, "extVersions": vers, "extExpected": expectedExtVersion(),
 			"now": time.Now().UnixMilli(), "lang": lang, "autostart": autostartEnabled(),
-			"extensionPath": extensionDir(), "browsers": installedBrowsers(), "tools": tools.Status(st.YtdlpPath),
+			"extensionPath": extensionDir(), "browsers": installedBrowsers(), "net": guard.Status(), "update": updateInfo.Load(), "tools": tools.Status(st.YtdlpPath),
 		})
+	case "/api/detail":
+		writeJSON(w, 200, s.store.Detail(r.URL.Query().Get("id")))
 	case "/api/add":
 		var b struct{ URLs, Kind, Section string }
 		if decodeBody(r, &b) != nil {

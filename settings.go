@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-const appVersion = "1.2.8-win"
+const appVersion = "1.3.0-win"
 const appName = "MC Download Manager"
 
 // Settings is persisted as JSON in %APPDATA%\MC Download Manager\settings.json.
@@ -39,6 +39,10 @@ type Settings struct {
 	LastYtdlpUpdate    int64    `json:"lastYtdlpUpdate"`
 	ClipboardVideos    bool     `json:"clipboardVideos"` // also ask for copied social-media video links
 	LiveFromStart      bool     `json:"liveFromStart"`   // record YouTube/Twitch live streams from the beginning // Run-key entry was added once on first launch
+	AutoConnections    bool     `json:"autoConnections"` // tune the number of connections per download automatically
+	GameFriendly       bool     `json:"gameFriendly"`    // keep latency low: back off when the line gets congested or a fullscreen app runs
+	CheckUpdates       bool     `json:"checkUpdates"`    // look for a newer GitHub release
+	LinkKBps           int      `json:"linkKBps"`        // learned line speed (KB/s), persisted between runs
 	Token              string   `json:"token"`           // secret for the local web UI
 }
 
@@ -71,6 +75,9 @@ func defaultSettings() Settings {
 		LowPriority:        true,
 		LiveFromStart:      true,
 		AutoUpdateYtdlp:    true,
+		AutoConnections:    true,
+		GameFriendly:       true,
+		CheckUpdates:       true,
 	}
 }
 
